@@ -10,6 +10,8 @@ from uuid import uuid4
 from datetime import datetime
 import re
 import logging
+from openpecha import github_utils,config
+
 
 pechas_catalog = ''
 alignment_catalog = ''
@@ -41,12 +43,13 @@ def get_text(url):
 def parse_text_meta(page):
     src_meta = {}
     title_page_div = page.select_one("div.etext-page-border-center.etext-titlepage")
-    src_meta['title'] =  re.match("(.*)\{.*\}",title_page_div.select_one("div>div:nth-of-type(1) h1").text).group(1)
+    src_meta['title'] =  re.match("(.*)\{.*\}",title_page_div.select_one("div>div:nth-of-type(1) h1").text).group(1).replace("'","")
     src_meta['description']= change_text_format(title_page_div.select_one("div>div:nth-of-type(2)").text)
     src_meta['source'] = main_url
-    src_meta['responibilities'] = [change_text_format(i.text) for i in title_page_div.select("div>div:nth-of-type(3) li")]
     src_meta['file_info'] = [change_text_format(i.text) for i in title_page_div.select("div>div:nth-of-type(5) li")]
-    src_meta['text_witnesses'] = title_page_div.select_one("div>div:nth-of-type(4) a").text
+    src_meta['responibilities'] = [change_text_format(i.text) for i in title_page_div.select("div>div:nth-of-type(3)>div:nth-of-type(2) li")]
+    src_meta['text_witnesses'] = main_url+title_page_div.select_one("div>div:nth-of-type(4) a")['href']
+
     return src_meta
 
 
@@ -196,8 +199,16 @@ def write_readme(source_metadata,opf_path):
     pecha_id = f"|pecha_id | {opf_path.stem}"
     source = f"|Source | {main_url}"
     readme = f"{Title}\n{Table}\n{pecha_id}\n{source}"
-    print(opf_path.parent)
     Path(opf_path.parent / "readme.md").write_text(readme)
+
+
+def publish_pecha(opf_path):
+    github_utils.github_publish(
+    opf_path,
+    not_includes=[],
+    message="initial commit"
+    )
+    print("Published ",opf_path.stem)
 
 
 def main():
