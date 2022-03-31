@@ -27,11 +27,23 @@ def get_languages_url(page):
 
 
 def get_text(url):
-    page = get_page(url)
-    text_meta = page.select_one("div.etext-page-border-center.etext-titlepage").text
+    page = get_page(url)  
     next_page = page.select_one("div.etext-page-border-right.with-page-link a")['href']
     base_text = extract_base_text(main_url+next_page)
-    return base_text
+    src_meta = parse_text_meta(page)
+    return base_text,src_meta
+
+
+def parse_text_meta(page):
+    src_meta = {}
+    title_page_div = page.select_one("div.etext-page-border-center.etext-titlepage")
+    src_meta['title'] =  re.match("(.*)\{.*\}",title_page_div.select_one("div>div:nth-of-type(1) h1").text).group(1)
+    src_meta['description']= change_text_format(title_page_div.select_one("div>div:nth-of-type(2)").text)
+    src_meta['source'] = main_url
+    src_meta['responibilities'] = [change_text_format(i.text) for i in title_page_div.select("div>div:nth-of-type(3) li")]
+    src_meta['file_info'] = [change_text_format(i.text) for i in title_page_div.select("div>div:nth-of-type(5) li")]
+    src_meta['text_witnesses'] = title_page_div.select_one("div>div:nth-of-type(4) a").text
+    return src_meta
 
 
 def extract_base_text(url):
@@ -45,6 +57,7 @@ def extract_base_text(url):
         base_text.update(extract_base_text(main_url+next_page['href']))
     return base_text
 
+
 def convert_pagination(pagination):
     new_pagination =""
     m = re.match(".*:(\d+)(\D+)",pagination)
@@ -54,7 +67,6 @@ def convert_pagination(pagination):
         new_pagination = int(m.group(1))*2
 
     return new_pagination
-
 
 
 def get_pecha_links(url):
@@ -67,15 +79,12 @@ def get_pecha_links(url):
         e_texts.extend(get_pecha_links(main_url+next_page['href']))
     return e_texts    
 
-def get_metadata():
-    pass
 
 def get_base_layer(text_with_pagination):
     bases = {}
     text_clean = ""
     for pagintation in text_with_pagination:
         text_clean +=text_with_pagination[pagintation]+"\n\n"
-    #base_text,_ = seperate_text_from_pagination(text_with_pagination)
     bases.update({"sample_title":text_clean})
     return bases
 
@@ -86,6 +95,7 @@ def get_layers(text_with_pagination):
         LayerEnum.pagination : get_pagination_layers(text_with_pagination)
     }
     return layers
+
 
 def get_pagination_layers(text_with_pagination):
     page_annotations = {}
@@ -101,6 +111,7 @@ def get_pagination_layers(text_with_pagination):
 
     return pagination_layer
 
+
 def get_page_annotation(text,char_walker,pagination):
     page_start = char_walker
     page_end = char_walker + len(text)
@@ -110,17 +121,19 @@ def get_page_annotation(text,char_walker,pagination):
 
     return page_annotation,page_end+2
 
-def get_metadata():
+
+def get_metadata(src_meta):
     instance_meta = PechaMetaData(
         initial_creation_type=InitialCreationEnum.input,
         created_at=datetime.now(),
         last_modified_at=datetime.now(),
-        source_metadata= {})
+        source_metadata= src_meta)
     return instance_meta
 
-def create_opf(opf_path,text_with_pagination):
+
+def create_opf(opf_path,text_with_pagination,src_meta):
     opf = OpenPechaFS(
-        meta= get_metadata(),
+        meta= get_metadata(src_meta),
         base=get_base_layer(text_with_pagination),
         layers= get_layers(text_with_pagination)
         )
@@ -164,7 +177,8 @@ def change_text_format(text):
             base_text+=text[i]
         prev = base_text[-1]    
     return base_text[:-1] if base_text[-1] == "\n" else base_text
-    
+
+
 def main():
     opf_path = Path('./opfs')
     e_text_links = get_pecha_links(e_text_url)
@@ -172,8 +186,8 @@ def main():
         page = get_page(main_url+e_text_link)
         lang_urls = get_languages_url(page)
         for lang_url in lang_urls:
-            texts = get_text(main_url+lang_url['href'])
-            create_opf(opf_path,texts)
+            texts,src_meta = get_text(main_url+lang_url['href'])
+            create_opf(opf_path,texts,src_meta)
             break
         break
 
