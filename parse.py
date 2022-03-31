@@ -9,7 +9,11 @@ import requests
 from uuid import uuid4
 from datetime import datetime
 import re
+import logging
 
+pechas_catalog = ''
+alignment_catalog = ''
+err_log = ''
 sample_url = "https://sakyaresearch.org/etexts/1183"
 main_url = "https://sakyaresearch.org"
 e_text_url = "https://sakyaresearch.org/etexts?filter%5Blanguage_id%5D=2"
@@ -65,7 +69,6 @@ def convert_pagination(pagination):
         new_pagination = int(m.group(1))*2 -1
     else:
         new_pagination = int(m.group(1))*2
-
     return new_pagination
 
 
@@ -80,18 +83,18 @@ def get_pecha_links(url):
     return e_texts    
 
 
-def get_base_layer(text_with_pagination):
+def get_base_layer(text_with_pagination,src_meta):
     bases = {}
     text_clean = ""
     for pagintation in text_with_pagination:
         text_clean +=text_with_pagination[pagintation]+"\n\n"
-    bases.update({"sample_title":text_clean})
+    bases.update({src_meta['title']:text_clean})
     return bases
 
 
-def get_layers(text_with_pagination):
+def get_layers(text_with_pagination,src_meta):
     layers = {}
-    layers["sample_title"] = {
+    layers[src_meta['title']] = {
         LayerEnum.pagination : get_pagination_layers(text_with_pagination)
     }
     return layers
@@ -108,7 +111,6 @@ def get_pagination_layers(text_with_pagination):
     pagination_layer = Layer(
         annotation_type=LayerEnum.pagination,annotations=page_annotations
     ) 
-
     return pagination_layer
 
 
@@ -118,7 +120,6 @@ def get_page_annotation(text,char_walker,pagination):
     page_annotation = {
         uuid4().hex:Page(span=Span(start = page_start,end =page_end),imgnum=pagination)
     }    
-
     return page_annotation,page_end+2
 
 
@@ -134,11 +135,12 @@ def get_metadata(src_meta):
 def create_opf(opf_path,text_with_pagination,src_meta):
     opf = OpenPechaFS(
         meta= get_metadata(src_meta),
-        base=get_base_layer(text_with_pagination),
-        layers= get_layers(text_with_pagination)
+        base=get_base_layer(text_with_pagination,src_meta),
+        layers= get_layers(text_with_pagination,src_meta)
         )
-
-    opf.save(output_path=opf_path)
+    opf_path = opf.save(output_path=opf_path)
+    write_readme(src_meta,opf_path)
+    return opf_path
 
 
 def remove_double_linebreak(text):
@@ -179,7 +181,29 @@ def change_text_format(text):
     return base_text[:-1] if base_text[-1] == "\n" else base_text
 
 
+def set_up_logger(logger_name):
+    logger = logging.getLogger(logger_name)
+    formatter = logging.Formatter("%(message)s")
+    fileHandler = logging.FileHandler(f"{logger_name}.log")
+    fileHandler.setFormatter(formatter)
+    logger.setLevel(logging.INFO)
+    logger.addHandler(fileHandler)
+    return logger
+
+def write_readme(source_metadata,opf_path):
+    Table = "| --- | --- "
+    Title = f"|Title | {source_metadata['title'].strip()} "
+    pecha_id = f"|pecha_id | {opf_path.stem}"
+    source = f"|Source | {main_url}"
+    readme = f"{Title}\n{Table}\n{pecha_id}\n{source}"
+    print(opf_path.parent)
+    Path(opf_path.parent / "readme.md").write_text(readme)
+
+
 def main():
+    global pechas_catalog,err_log
+    pechas_catalog = set_up_logger("pechas_catalog")
+    err_log = set_up_logger('err')
     opf_path = Path('./opfs')
     e_text_links = get_pecha_links(e_text_url)
     for e_text_link in e_text_links:
@@ -187,9 +211,17 @@ def main():
         lang_urls = get_languages_url(page)
         for lang_url in lang_urls:
             texts,src_meta = get_text(main_url+lang_url['href'])
-            create_opf(opf_path,texts,src_meta)
+            opf_path = create_opf(opf_path,texts,src_meta)
+            pechas_catalog.info(f"{opf_path.stem},{src_meta['title']}")
+            """ try:
+                texts,src_meta = get_text(main_url+lang_url['href'])
+                opf_path = create_opf(opf_path,texts,src_meta)
+                pechas_catalog.info(f"{opf_path.stem},{src_meta['title']}")
+            except:
+                err_log.info(f"err: {e_text_link}") """
             break
         break
+
 
 if __name__ == "__main__":
     main()
