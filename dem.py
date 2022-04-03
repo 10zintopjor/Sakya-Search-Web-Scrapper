@@ -14,10 +14,12 @@ def get_err_links():
     return new_link
 
 def get_pecha_names():
-    csv_rows = []
-    with open('pechas_catalogv1.txt','r')as file:
-        csv_rows = file.readlines()
-    return csv_rows
+    csv_row = []
+    with open('sa.csv','r')as file:
+        csv_rows = csv.reader(file)
+        for row in csv_rows:
+            csv_row.append(row[0])
+    return csv_row
 
 def delete_repo(id):
     github_utils.delete_repo(id)
@@ -25,9 +27,8 @@ def delete_repo(id):
 if __name__ == "__main__":
     pecha_ids = get_pecha_names()
     for pecha_id in pecha_ids:
-        id = pecha_id.replace("\n","")
         try:
-            delete_repo(id)
-            print(f"deleted {id}")
+            delete_repo(f"{pecha_id}.opf")
+            print(f"deleted {pecha_id}")
         except:
             print("already deleted")
