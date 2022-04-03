@@ -11,6 +11,7 @@ from datetime import datetime
 import re
 import logging
 from openpecha import github_utils,config
+from dem import get_err_links
 
 
 pechas_catalog = ''
@@ -56,7 +57,12 @@ def parse_text_meta(page):
 def extract_base_text(url):
     page = get_page(url)
     base_text={}
-    text = re.sub("\[\D:\d+\D?\]","",page.find("div",{"class": ["etext-body", "etext-front"]}).text)
+    """ is_elem = page.select_one("div.etext-body")
+    if is_elem == None:
+        text = page.select_one("div.etext-front").text
+    else:
+        text = is_elem.text """
+    text = re.sub("\[\D:\d+\D?\]","",page.select_one("div.etext-page-border-center.etext-content").text)
     pagination = convert_pagination(page.select_one("div.col-sm-8 div.row div:nth-child(2)").text.strip().replace("\n",""))
     base_text.update({change_text_format(text):pagination})
     next_page = page.select_one("div.etext-page-border-right.with-page-link a")
@@ -67,13 +73,16 @@ def extract_base_text(url):
 
 def convert_pagination(pagination):
     new_pagination =""
-    m = re.match(".*:(\d+)(\D+)",pagination)
-    if re.match(".*:\[-\]",pagination):
+    m = re.match(".*:\D*(\d+)(\D+)?",pagination)
+    if re.match(".*:\[-\]",pagination) or re.match(".*:/?",pagination):
         return None
+
     if m.group(2) == "a":
         new_pagination = int(m.group(1))*2 -1
     elif m.group(2) == "b":
         new_pagination = int(m.group(1))*2  
+    elif m.group(2) == None:
+        new_pagination = int(m.group(1))    
     return new_pagination
 
 
@@ -93,7 +102,7 @@ def get_base_layer(text_with_pagination,src_meta):
     text_clean = ""
     for text in text_with_pagination:
         text_clean +=text+"\n\n"
-    bases.update({src_meta['title']:text_clean})
+    bases.update({src_meta['title'][0:20]:text_clean})
     return bases
 
 
@@ -138,9 +147,10 @@ def get_metadata(src_meta):
 
 
 def create_opf(opf_path,text_with_pagination,src_meta,lang):
+    bases=get_base_layer(text_with_pagination,src_meta)
     opf = OpenPechaFS(
         meta= get_metadata(src_meta),
-        base=get_base_layer(text_with_pagination,src_meta),
+        base = bases,
         layers= get_layers(text_with_pagination,src_meta)
         )
     opf_path = opf.save(output_path=opf_path)
@@ -163,6 +173,8 @@ def remove_double_linebreak(text):
 
 def change_text_format(text):
     text = remove_double_linebreak(text)
+    if len(text) < 2:
+        return "Page Empty"
     base_text=""
     prev= ""
     text = text.replace("\n","") 
@@ -233,5 +245,20 @@ def main():
             except:
                 err_log.info(f"err: {e_text_link}")
 
+def err_test():
+    global pechas_catalog,err_log
+    pechas_catalog = set_up_logger("pechas_catalog")
+    err_log = set_up_logger('err')
+    opf_path = Path('./opfs')
+    
+    lang_urls = get_err_links()
+    for lang_url in lang_urls:
+        opf_path = Path('./opfs')
+        texts,src_meta = get_text(main_url+lang_url)
+        opf_path = create_opf(opf_path,texts,src_meta,lang_url)
+        print(f"FINISIHED {lang_url}")
+
+
 if __name__ == "__main__":
     main()
+    #err_test()
