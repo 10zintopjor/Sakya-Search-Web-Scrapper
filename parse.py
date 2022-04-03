@@ -56,9 +56,9 @@ def parse_text_meta(page):
 def extract_base_text(url):
     page = get_page(url)
     base_text={}
-    text = re.sub("\[\D:\d+\D?\]","",page.select_one("div.etext-body").text)
+    text = re.sub("\[\D:\d+\D?\]","",page.find("div",{"class": ["etext-body", "etext-front"]}).text)
     pagination = convert_pagination(page.select_one("div.col-sm-8 div.row div:nth-child(2)").text.strip().replace("\n",""))
-    base_text.update({pagination:change_text_format(text)})
+    base_text.update({change_text_format(text):pagination})
     next_page = page.select_one("div.etext-page-border-right.with-page-link a")
     if next_page != None:
         base_text.update(extract_base_text(main_url+next_page['href']))
@@ -68,10 +68,12 @@ def extract_base_text(url):
 def convert_pagination(pagination):
     new_pagination =""
     m = re.match(".*:(\d+)(\D+)",pagination)
+    if re.match(".*:\[-\]",pagination):
+        return None
     if m.group(2) == "a":
         new_pagination = int(m.group(1))*2 -1
-    else:
-        new_pagination = int(m.group(1))*2
+    elif m.group(2) == "b":
+        new_pagination = int(m.group(1))*2  
     return new_pagination
 
 
@@ -89,8 +91,8 @@ def get_pecha_links(url):
 def get_base_layer(text_with_pagination,src_meta):
     bases = {}
     text_clean = ""
-    for pagintation in text_with_pagination:
-        text_clean +=text_with_pagination[pagintation]+"\n\n"
+    for text in text_with_pagination:
+        text_clean +=text+"\n\n"
     bases.update({src_meta['title']:text_clean})
     return bases
 
@@ -106,8 +108,8 @@ def get_layers(text_with_pagination,src_meta):
 def get_pagination_layers(text_with_pagination):
     page_annotations = {}
     char_walker = 0
-    for pagination in text_with_pagination:
-        text = text_with_pagination[pagination]
+    for text in text_with_pagination:
+        pagination = text_with_pagination[text]
         page_annotation,char_walker = get_page_annotation(text,char_walker,pagination)
         page_annotations.update(page_annotation)
 
@@ -167,9 +169,9 @@ def change_text_format(text):
     ranges = iter(range(len(text)))
     for i in ranges:
         if i<len(text)-1:
-            if i%220 == 0 and i != 0 and re.search("\s",text[i+1]):
+            if i%170 == 0 and i != 0 and re.search("\s",text[i+1]):
                 base_text+=text[i]+"\n"
-            elif i%220 == 0 and i != 0 and re.search("\S",text[i+1]):
+            elif i%170 == 0 and i != 0 and re.search("\S",text[i+1]):
                 while i < len(text)-1 and re.search("\S",text[i+1]):
                     base_text+=text[i]
                     i = next(ranges) 
@@ -222,15 +224,13 @@ def main():
         lang_urls = get_languages_url(page)
         for lang_url in lang_urls:
             try:
+                opf_path = Path('./opfs')
                 texts,src_meta = get_text(main_url+lang_url['href'])
                 opf_path = create_opf(opf_path,texts,src_meta)
                 publish_pecha(opf_path)
                 pechas_catalog.info(f"{opf_path.stem},{src_meta['title']}")
             except:
                 err_log.info(f"err: {e_text_link}")
-            break
-        break
-
 
 if __name__ == "__main__":
     main()
