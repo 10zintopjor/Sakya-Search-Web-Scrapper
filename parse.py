@@ -204,7 +204,7 @@ def write_readme(source_metadata,opf_path):
 
 def publish_pecha(opf_path):
     github_utils.github_publish(
-    opf_path,
+    opf_path.parent,
     not_includes=[],
     message="initial commit"
     )
@@ -221,15 +221,13 @@ def main():
         page = get_page(main_url+e_text_link)
         lang_urls = get_languages_url(page)
         for lang_url in lang_urls:
-            texts,src_meta = get_text(main_url+lang_url['href'])
-            opf_path = create_opf(opf_path,texts,src_meta)
-            pechas_catalog.info(f"{opf_path.stem},{src_meta['title']}")
-            """ try:
+            try:
                 texts,src_meta = get_text(main_url+lang_url['href'])
                 opf_path = create_opf(opf_path,texts,src_meta)
+                publish_pecha(opf_path)
                 pechas_catalog.info(f"{opf_path.stem},{src_meta['title']}")
             except:
-                err_log.info(f"err: {e_text_link}") """
+                err_log.info(f"err: {e_text_link}")
             break
         break
 
