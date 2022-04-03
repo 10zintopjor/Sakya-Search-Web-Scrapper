@@ -137,14 +137,14 @@ def get_metadata(src_meta):
     return instance_meta
 
 
-def create_opf(opf_path,text_with_pagination,src_meta):
+def create_opf(opf_path,text_with_pagination,src_meta,lang):
     opf = OpenPechaFS(
         meta= get_metadata(src_meta),
         base=get_base_layer(text_with_pagination,src_meta),
         layers= get_layers(text_with_pagination,src_meta)
         )
     opf_path = opf.save(output_path=opf_path)
-    write_readme(src_meta,opf_path)
+    write_readme(src_meta,opf_path,lang)
     return opf_path
 
 
@@ -195,12 +195,13 @@ def set_up_logger(logger_name):
     logger.addHandler(fileHandler)
     return logger
 
-def write_readme(source_metadata,opf_path):
+def write_readme(source_metadata,opf_path,lang):
     Table = "| --- | --- "
     Title = f"|Title | {source_metadata['title'].strip()} "
     pecha_id = f"|pecha_id | {opf_path.stem}"
+    language = f"|language | {lang.text}"
     source = f"|Source | {main_url}"
-    readme = f"{Title}\n{Table}\n{pecha_id}\n{source}"
+    readme = f"{Title}\n{Table}\n{pecha_id}\n{language}\n{source}"
     Path(opf_path.parent / "readme.md").write_text(readme)
 
 
@@ -226,9 +227,9 @@ def main():
             try:
                 opf_path = Path('./opfs')
                 texts,src_meta = get_text(main_url+lang_url['href'])
-                opf_path = create_opf(opf_path,texts,src_meta)
+                opf_path = create_opf(opf_path,texts,src_meta,lang_url)
                 publish_pecha(opf_path)
-                pechas_catalog.info(f"{opf_path.stem},{src_meta['title']}")
+                pechas_catalog.info(f"{opf_path.stem},{src_meta['title']},{lang_url.text}")
             except:
                 err_log.info(f"err: {e_text_link}")
 
