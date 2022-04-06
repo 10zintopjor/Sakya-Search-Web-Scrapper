@@ -242,7 +242,7 @@ def main():
         for lang_url in lang_urls:
             try:
                 opf_path = Path('./opfs')
-                base_id = uuid4().hex[:4]
+                base_id = get_base_id()
                 texts,src_meta = get_text(main_url+lang_url['href'],base_id)
                 opf_path = create_opf(opf_path,texts,src_meta,lang_url,base_id)
                 #publish_pecha(opf_path)
@@ -252,6 +252,11 @@ def main():
             break
         break
 
+def get_base_id():
+    id=uuid4().hex[:4]
+    while id.isnumeric() == True:
+        id = uuid4().hex[:4]
+    return id
 
 def err_test():
     opf_path = Path('./opfs')
@@ -261,7 +266,7 @@ def err_test():
         lang_urls = get_languages_url(page)
         for lang_url in lang_urls:
             opf_path = Path('./opfs')
-            base_id = uuid4().hex[:4]
+            base_id = get_base_id()
             texts,src_meta = get_text(main_url+lang_url['href'],base_id)
             opf_path = create_opf(opf_path,texts,src_meta,lang_url,base_id)
             break
