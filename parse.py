@@ -33,22 +33,31 @@ def get_languages_url(page):
     return langs
 
 
-def get_text(url):
+def get_text(url,base_id):
     page = get_page(url)  
     next_page = page.select_one("div.etext-page-border-right.with-page-link a")['href']
     base_text = extract_base_text(main_url+next_page)
     src_meta = parse_text_meta(page)
+    src_meta["bases"] = get_meta_bases(base_id,src_meta)
     return base_text,src_meta
 
+
+def get_meta_bases(base_id,src_meta):
+    dic={base_id:{
+        "title":src_meta['title'],
+        "order":1,
+        "base_file":f"{base_id}.txt"
+    }}
+    return dic
 
 def parse_text_meta(page):
     src_meta = {}
     title_page_div = page.select_one("div.etext-page-border-center.etext-titlepage")
-    src_meta['title'] =  re.match("(.*)\{.*\}",title_page_div.select_one("div>div:nth-of-type(1) h1").text).group(1).replace("'","")
-    src_meta['description']= change_text_format(title_page_div.select_one("div>div:nth-of-type(2)").text)
+    src_meta['title'] =  re.match("(.*)\{.*\}",title_page_div.select_one("div>div:nth-of-type(1) h1").text).group(1).replace("'","").strip()
+    src_meta['description']= change_text_format(title_page_div.select_one("div>div:nth-of-type(2)").text).strip()
     src_meta['source'] = main_url
-    src_meta['file_info'] = [change_text_format(i.text) for i in title_page_div.select("div>div:nth-of-type(5) li")]
-    src_meta['responibilities'] = [change_text_format(i.text) for i in title_page_div.select("div>div:nth-of-type(3)>div:nth-of-type(2) li")]
+    src_meta['file_info'] = [change_text_format(i.text).strip() for i in title_page_div.select("div>div:nth-of-type(5) li")]
+    src_meta['responibilities'] = [change_text_format(i.text).strip() for i in title_page_div.select("div>div:nth-of-type(3)>div:nth-of-type(2) li")]
     src_meta['text_witnesses'] = main_url+title_page_div.select_one("div>div:nth-of-type(4) a")['href']
 
     return src_meta
@@ -57,11 +66,6 @@ def parse_text_meta(page):
 def extract_base_text(url):
     page = get_page(url)
     base_text={}
-    """ is_elem = page.select_one("div.etext-body")
-    if is_elem == None:
-        text = page.select_one("div.etext-front").text
-    else:
-        text = is_elem.text """
     text = re.sub("\[\D:\d+\D?\]","",page.select_one("div.etext-page-border-center.etext-content").text)
     pagination = convert_pagination(page.select_one("div.col-sm-8 div.row div:nth-child(2)").text.strip().replace("\n",""))
     base_text.update({change_text_format(text):pagination})
@@ -97,18 +101,18 @@ def get_pecha_links(url):
     return e_texts    
 
 
-def get_base_layer(text_with_pagination,src_meta):
+def get_base_layer(text_with_pagination,base_id):
     bases = {}
     text_clean = ""
     for text in text_with_pagination:
         text_clean +=text+"\n\n"
-    bases.update({src_meta['title'][0:20]:text_clean})
+    bases.update({base_id:text_clean})
     return bases
 
 
-def get_layers(text_with_pagination,src_meta):
+def get_layers(text_with_pagination,base_id):
     layers = {}
-    layers[src_meta['title']] = {
+    layers[base_id] = {
         LayerEnum.pagination : get_pagination_layers(text_with_pagination)
     }
     return layers
@@ -146,12 +150,12 @@ def get_metadata(src_meta):
     return instance_meta
 
 
-def create_opf(opf_path,text_with_pagination,src_meta,lang):
-    bases=get_base_layer(text_with_pagination,src_meta)
+def create_opf(opf_path,text_with_pagination,src_meta,lang,base_id):
+    bases=get_base_layer(text_with_pagination,base_id)
     opf = OpenPechaFS(
         meta= get_metadata(src_meta),
         base = bases,
-        layers= get_layers(text_with_pagination,src_meta)
+        layers= get_layers(text_with_pagination,base_id)
         )
     opf_path = opf.save(output_path=opf_path)
     write_readme(src_meta,opf_path,lang)
@@ -238,27 +242,32 @@ def main():
         for lang_url in lang_urls:
             try:
                 opf_path = Path('./opfs')
-                texts,src_meta = get_text(main_url+lang_url['href'])
-                opf_path = create_opf(opf_path,texts,src_meta,lang_url)
-                publish_pecha(opf_path)
+                base_id = uuid4().hex[:4]
+                texts,src_meta = get_text(main_url+lang_url['href'],base_id)
+                opf_path = create_opf(opf_path,texts,src_meta,lang_url,base_id)
+                #publish_pecha(opf_path)
                 pechas_catalog.info(f"{opf_path.stem},{src_meta['title']},{lang_url.text}")
             except:
                 err_log.info(f"err: {e_text_link}")
+            break
+        break
+
 
 def err_test():
-    global pechas_catalog,err_log
-    pechas_catalog = set_up_logger("pechas_catalog")
-    err_log = set_up_logger('err')
     opf_path = Path('./opfs')
-    
-    lang_urls = get_err_links()
-    for lang_url in lang_urls:
-        opf_path = Path('./opfs')
-        texts,src_meta = get_text(main_url+lang_url)
-        opf_path = create_opf(opf_path,texts,src_meta,lang_url)
-        print(f"FINISIHED {lang_url}")
+    e_text_links = get_pecha_links(e_text_url)
+    for e_text_link in e_text_links:
+        page = get_page(main_url+e_text_link)
+        lang_urls = get_languages_url(page)
+        for lang_url in lang_urls:
+            opf_path = Path('./opfs')
+            base_id = uuid4().hex[:4]
+            texts,src_meta = get_text(main_url+lang_url['href'],base_id)
+            opf_path = create_opf(opf_path,texts,src_meta,lang_url,base_id)
+            break
+        break
 
 
 if __name__ == "__main__":
-    main()
-    #err_test()
+    #main()
+    err_test()

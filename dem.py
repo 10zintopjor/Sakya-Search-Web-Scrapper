@@ -15,7 +15,7 @@ def get_err_links():
 
 def get_pecha_names():
     csv_row = []
-    with open('sa.csv','r')as file:
+    with open('pechas_catalog.log','r')as file:
         csv_rows = csv.reader(file)
         for row in csv_rows:
             csv_row.append(row[0])
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     pecha_ids = get_pecha_names()
     for pecha_id in pecha_ids:
         try:
-            delete_repo(f"{pecha_id}.opf")
-            print(f"deleted {pecha_id}")
+            delete_repo(f"{pecha_id}")
+            print(f"DELETED {pecha_id}")
         except:
             print("already deleted")
