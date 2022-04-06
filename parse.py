@@ -74,17 +74,17 @@ def extract_base_text(url):
 
 
 def convert_pagination(pagination):
+    print(pagination)
     new_pagination =""
     m = re.match(".*:\D*(\d+)(\D+)?",pagination)
-    if re.match(".*:\[-\]",pagination) or re.match(".*:/?",pagination):
-        return None
-
-    if m.group(2) == "a":
+    if re.match(".*:\[-\]",pagination) or re.match(".*:\?",pagination):
+        new_pagination =  None
+    elif m.group(2) == "a":
         new_pagination = int(m.group(1))*2 -1
     elif m.group(2) == "b":
         new_pagination = int(m.group(1))*2  
     elif m.group(2) == None:
-        new_pagination = int(m.group(1))    
+        new_pagination = int(m.group(1))  
     return new_pagination
 
 
@@ -247,8 +247,7 @@ def main():
                 pechas_catalog.info(f"{opf_path.stem},{src_meta['title']},{lang_url.text}")
             except:
                 err_log.info(f"err: {e_text_link}")
-            break
-        break
+            
 
 def get_base_id():
     id=uuid4().hex[:4]
@@ -272,5 +271,5 @@ def err_test():
 
 
 if __name__ == "__main__":
-    main()
-    #err_test()
+    #main()
+    err_test()
