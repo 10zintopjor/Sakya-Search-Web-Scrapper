@@ -15,9 +15,7 @@ from dem import get_err_links
 
 
 pechas_catalog = ''
-alignment_catalog = ''
 err_log = ''
-sample_url = "https://sakyaresearch.org/etexts/1183"
 main_url = "https://sakyaresearch.org"
 e_text_url = "https://sakyaresearch.org/etexts?filter%5Blanguage_id%5D=2"
 
@@ -274,5 +272,5 @@ def err_test():
 
 
 if __name__ == "__main__":
-    #main()
-    err_test()
+    main()
+    #err_test()
