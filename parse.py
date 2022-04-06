@@ -37,6 +37,7 @@ def get_text(url,base_id):
     base_text = extract_base_text(main_url+next_page)
     src_meta = parse_text_meta(page)
     src_meta["bases"] = get_meta_bases(base_id,src_meta)
+
     return base_text,src_meta
 
 
@@ -47,6 +48,7 @@ def get_meta_bases(base_id,src_meta):
         "base_file":f"{base_id}.txt"
     }}
     return dic
+
 
 def parse_text_meta(page):
     src_meta = {}
@@ -75,16 +77,16 @@ def extract_base_text(url):
 
 
 def convert_pagination(pagination):
-    new_pagination =""
+    new_pagination =None
     m = re.match(".*:\D*(\d+)(\D+)?",pagination)
-    if re.match(".*:\[-\]",pagination) or re.match(".*:\?",pagination):
+    if re.match(".*:\[-\]",pagination) or re.match(".*:\?",pagination) or re.match(".*:\D",pagination):
         new_pagination =  None
     elif m.group(2) == "a":
         new_pagination = int(m.group(1))*2 -1
     elif m.group(2) == "b":
         new_pagination = int(m.group(1))*2  
     elif m.group(2) == None:
-        new_pagination = int(m.group(1))  
+        new_pagination = int(m.group(1))
     return new_pagination
 
 
@@ -209,6 +211,7 @@ def set_up_logger(logger_name):
     logger.addHandler(fileHandler)
     return logger
 
+
 def write_readme(source_metadata,opf_path,lang):
     Table = "| --- | --- "
     Title = f"|Title | {source_metadata['title'].strip()} "
@@ -243,10 +246,10 @@ def main():
                 base_id = get_base_id()
                 texts,src_meta = get_text(main_url+lang_url['href'],base_id)
                 opf_path = create_opf(opf_path,texts,src_meta,lang_url,base_id)
-                publish_pecha(opf_path)
-                pechas_catalog.info(f"{opf_path.stem},{src_meta['title']},{lang_url.text}")
-            except:
-                err_log.info(f"err: {e_text_link}")
+                #publish_pecha(opf_path)
+                pechas_catalog.info(f"{opf_path.stem},{src_meta['title']},{lang_url.text},{lang_url['href']}")
+            except Exception as e:
+                err_log.info(f"{e_text_link},{e}")
             
 
 def get_base_id():
@@ -255,21 +258,19 @@ def get_base_id():
         id = uuid4().hex[:4]
     return id
 
+
 def err_test():
     opf_path = Path('./opfs')
-    e_text_links = get_pecha_links(e_text_url)
+    e_text_links = ["/etexts/1142?listing=resources&parent_filter%5Blanguage_id%5D=2"]
+    lang_url = ""
     for e_text_link in e_text_links:
-        page = get_page(main_url+e_text_link)
-        lang_urls = get_languages_url(page)
-        for lang_url in lang_urls:
-            opf_path = Path('./opfs')
-            base_id = get_base_id()
-            texts,src_meta = get_text(main_url+lang_url['href'],base_id)
-            opf_path = create_opf(opf_path,texts,src_meta,lang_url,base_id)
-            break
-        break
-
+        print(e_text_link)    
+        opf_path = Path('./opfs')
+        base_id = get_base_id()
+        texts,src_meta = get_text(main_url+e_text_link,base_id)
+        opf_path = create_opf(opf_path,texts,src_meta,lang_url,base_id)
+        print("DoNE")
+            
 
 if __name__ == "__main__":
     main()
-    #err_test()

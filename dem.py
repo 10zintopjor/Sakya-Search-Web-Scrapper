@@ -3,6 +3,8 @@ import csv
 import git
 import github
 from openpecha import github_utils
+
+
 def get_err_links():
     new_link = []
     datas = ""
@@ -25,10 +27,6 @@ def delete_repo(id):
     github_utils.delete_repo(id)
 
 if __name__ == "__main__":
-    pecha_ids = get_pecha_names()
-    for pecha_id in pecha_ids:
-        try:
-            delete_repo(f"{pecha_id}")
-            print(f"DELETED {pecha_id}")
-        except:
-            print("already deleted")
+    err_links =get_err_links()
+    for err_link  in err_links:
+        print(err_link)
