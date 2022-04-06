@@ -245,7 +245,7 @@ def main():
                 base_id = get_base_id()
                 texts,src_meta = get_text(main_url+lang_url['href'],base_id)
                 opf_path = create_opf(opf_path,texts,src_meta,lang_url,base_id)
-                #publish_pecha(opf_path)
+                publish_pecha(opf_path)
                 pechas_catalog.info(f"{opf_path.stem},{src_meta['title']},{lang_url.text}")
             except:
                 err_log.info(f"err: {e_text_link}")
