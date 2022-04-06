@@ -16,7 +16,7 @@ from dem import get_err_links
 
 pechas_catalog = ''
 err_log = ''
-main_url = "www.sakyaresearch.org"
+main_url = "https://sakyaresearch.org"
 e_text_url = "https://sakyaresearch.org/etexts?filter%5Blanguage_id%5D=2"
 
 
@@ -52,7 +52,7 @@ def parse_text_meta(page):
     src_meta = {}
     title_page_div = page.select_one("div.etext-page-border-center.etext-titlepage")
     src_meta['title'] =  re.match("(.*)\{.*\}",title_page_div.select_one("div>div:nth-of-type(1) h1").text).group(1).replace("'","").strip()
-    src_meta['author'] = title_page_div.select_one("div>div:nth-of-type(1) a").text.group(1).replace("'","").strip()
+    src_meta['author'] = title_page_div.select_one("div>div:nth-of-type(1) a").text.replace("'","").strip()
     src_meta['description']= change_text_format(title_page_div.select_one("div>div:nth-of-type(2)").text).strip()
     src_meta['source'] = main_url
     src_meta['file_info'] = [change_text_format(i.text).strip() for i in title_page_div.select("div>div:nth-of-type(5) li")]
@@ -271,5 +271,5 @@ def err_test():
 
 
 if __name__ == "__main__":
-    #main()
-    err_test()
+    main()
+    #err_test()
