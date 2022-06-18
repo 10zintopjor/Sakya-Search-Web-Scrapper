@@ -229,6 +229,23 @@ def publish_pecha(opf_path):
     )
     print("Published ",opf_path.stem)
 
+def save_source(opf_path,lang_url):
+    source_file_path = Path(f"{opf_path}/Source") 
+    source_file_path.mkdir(parents=True, exist_ok=True)
+    page = get_page(main_url+lang_url)
+    pagination = page.select_one("div.col-sm-8 div.row div:nth-child(2)").text.strip().replace("\n","")
+    if not pagination:
+        pagination="title"
+    source_html = get_source_html(main_url+lang_url)
+    Path(source_file_path / f"{pagination}.html").write_text(source_html)
+    next_page = page.select_one("div.etext-page-border-right.with-page-link a")
+    if next_page:
+        save_source(opf_path,next_page['href'])
+    return
+
+def get_source_html(url):
+    response = requests.get(url)
+    return response.text.strip()
 
 def main():
     global pechas_catalog,err_log
@@ -240,16 +257,25 @@ def main():
         page = get_page(main_url+e_text_link)
         lang_urls = get_languages_url(page)
         for lang_url in lang_urls:
-            try:
+            opf_path = Path('./opfs')
+            base_id = get_base_id()
+            texts,src_meta = get_text(main_url+lang_url['href'],base_id)
+            opf_path = create_opf(opf_path,texts,src_meta,lang_url,base_id)
+            save_source(opf_path.parent,lang_url["href"])
+            #publish_pecha(opf_path)
+            pechas_catalog.info(f"{opf_path.stem},{src_meta['title']},{lang_url.text}")
+            print(opf_path)
+            """ try:
                 opf_path = Path('./opfs')
                 base_id = get_base_id()
                 texts,src_meta = get_text(main_url+lang_url['href'],base_id)
                 opf_path = create_opf(opf_path,texts,src_meta,lang_url,base_id)
+                save_source(opf_path.parent,lang_url)
                 #publish_pecha(opf_path)
                 pechas_catalog.info(f"{opf_path.stem},{src_meta['title']},{lang_url.text}")
-                print(src_meta['title'])
+                print(opf_path)
             except Exception as e:
-                err_log.info(f"{e_text_link},{e}")
+                err_log.info(f"{e_text_link},{e}") """
             
 
 def get_base_id():
