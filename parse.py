@@ -1,16 +1,16 @@
-from curses.textpad import Textbox
-from urllib.parse import ParseResultBytes
 from bs4 import BeautifulSoup
 from openpecha.core.pecha import OpenPechaFS
-from openpecha.core.layer import InitialCreationEnum, Layer, LayerEnum, PechaMetaData
+from openpecha.core.metadata import InitialPechaMetadata,InitialCreationType
 from openpecha.core.annotation import Page, Span
+from openpecha.core.layer import Layer, LayerEnum
+from openpecha import github_utils,config
+
 from pathlib import Path
 import requests
 from uuid import uuid4
 from datetime import datetime
 import re
 import logging
-from openpecha import github_utils,config
 from dem import get_err_links
 
 
@@ -53,10 +53,9 @@ def get_meta_bases(base_id,src_meta):
 def parse_text_meta(page):
     src_meta = {}
     title_page_div = page.select_one("div.etext-page-border-center.etext-titlepage")
-    src_meta['title'] =  re.match("(.*)\{.*\}",title_page_div.select_one("div>div:nth-of-type(1) h1").text).group(1).replace("'","").strip()
+    src_meta['title'] =  re.match("(.*),.*\{.*\}",title_page_div.select_one("div>div:nth-of-type(1) h1").text).group(1).replace("'","").strip()
     src_meta['author'] = title_page_div.select_one("div>div:nth-of-type(1) a").text.replace("'","").strip()
     src_meta['description']= change_text_format(title_page_div.select_one("div>div:nth-of-type(2)").text).strip()
-    src_meta['source'] = main_url
     src_meta['file_info'] = [change_text_format(i.text).strip() for i in title_page_div.select("div>div:nth-of-type(5) li")]
     src_meta['responibilities'] = [change_text_format(i.text).strip() for i in title_page_div.select("div>div:nth-of-type(3)>div:nth-of-type(2) li")]
     src_meta['text_witnesses'] = main_url+title_page_div.select_one("div>div:nth-of-type(4) a")['href']
@@ -68,7 +67,7 @@ def extract_base_text(url):
     page = get_page(url)
     base_text={}
     text = re.sub("\[\D:\d+\D?\]","",page.select_one("div.etext-page-border-center.etext-content").text)
-    pagination = convert_pagination(page.select_one("div.col-sm-8 div.row div:nth-child(2)").text.strip().replace("\n",""))
+    pagination = page.select_one("div.col-sm-8 div.row div:nth-child(2)").text.strip().replace("\n","")
     base_text.update({change_text_format(text):pagination})
     next_page = page.select_one("div.etext-page-border-right.with-page-link a")
     if next_page != None:
@@ -135,17 +134,17 @@ def get_pagination_layers(text_with_pagination):
 def get_page_annotation(text,char_walker,pagination):
     page_start = char_walker
     page_end = char_walker + len(text)
+    src_pagination = re.search(".*:(.*)",pagination)
     page_annotation = {
-        uuid4().hex:Page(span=Span(start = page_start,end =page_end),imgnum=pagination)
+        uuid4().hex:Page(span=Span(start = page_start,end =page_end),imgnum=convert_pagination(pagination),metadata={"imgnum":src_pagination.group(1)})
     }    
     return page_annotation,page_end+2
 
 
 def get_metadata(src_meta):
-    instance_meta = PechaMetaData(
-        initial_creation_type=InitialCreationEnum.input,
-        created_at=datetime.now(),
-        last_modified_at=datetime.now(),
+    instance_meta = InitialPechaMetadata(
+        initial_creation_type=InitialCreationType.input,
+        source=main_url,
         source_metadata= src_meta)
     return instance_meta
 
@@ -247,7 +246,8 @@ def main():
                 texts,src_meta = get_text(main_url+lang_url['href'],base_id)
                 opf_path = create_opf(opf_path,texts,src_meta,lang_url,base_id)
                 #publish_pecha(opf_path)
-                pechas_catalog.info(f"{opf_path.stem},{src_meta['title']},{lang_url.text},{lang_url['href']}")
+                pechas_catalog.info(f"{opf_path.stem},{src_meta['title']},{lang_url.text}")
+                print(src_meta['title'])
             except Exception as e:
                 err_log.info(f"{e_text_link},{e}")
             
