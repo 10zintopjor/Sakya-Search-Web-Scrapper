@@ -4,10 +4,10 @@ from openpecha.core.metadata import InitialPechaMetadata,InitialCreationType
 from openpecha.core.annotation import Page, Span
 from openpecha.core.layer import Layer, LayerEnum
 from openpecha import github_utils,config
-
 from pathlib import Path
 import requests
 from uuid import uuid4
+import os
 from datetime import datetime
 import re
 import logging
@@ -53,7 +53,7 @@ def get_meta_bases(base_id,src_meta):
 def parse_text_meta(page):
     src_meta = {}
     title_page_div = page.select_one("div.etext-page-border-center.etext-titlepage")
-    src_meta['title'] =  re.match("(.*),.*\{.*\}",title_page_div.select_one("div>div:nth-of-type(1) h1").text).group(1).replace("'","").strip()
+    src_meta['title'] =  re.match("(.*),?.*\{.*\}",title_page_div.select_one("div>div:nth-of-type(1) h1").text).group(1).replace("'","").strip()
     src_meta['author'] = title_page_div.select_one("div>div:nth-of-type(1) a").text.replace("'","").strip()
     src_meta['description']= change_text_format(title_page_div.select_one("div>div:nth-of-type(2)").text).strip()
     src_meta['file_info'] = [change_text_format(i.text).strip() for i in title_page_div.select("div>div:nth-of-type(5) li")]
@@ -136,7 +136,7 @@ def get_page_annotation(text,char_walker,pagination):
     page_end = char_walker + len(text)
     src_pagination = re.search(".*:(.*)",pagination)
     page_annotation = {
-        uuid4().hex:Page(span=Span(start = page_start,end =page_end),imgnum=convert_pagination(pagination),metadata={"imgnum":src_pagination.group(1)})
+        uuid4().hex:Page(span=Span(start = page_start,end =page_end),imgnum=convert_pagination(pagination),metadata={"page_num":src_pagination.group(1)})
     }    
     return page_annotation,page_end+2
 
@@ -225,7 +225,9 @@ def publish_pecha(opf_path):
     github_utils.github_publish(
     opf_path.parent,
     not_includes=[],
-    message="initial commit"
+    message="initial commit",
+    org="OpenPecha-Data",
+    token=os.environ.get("GITHUB_TOKEN")
     )
     print("Published ",opf_path.stem)
 
@@ -257,25 +259,17 @@ def main():
         page = get_page(main_url+e_text_link)
         lang_urls = get_languages_url(page)
         for lang_url in lang_urls:
-            opf_path = Path('./opfs')
-            base_id = get_base_id()
-            texts,src_meta = get_text(main_url+lang_url['href'],base_id)
-            opf_path = create_opf(opf_path,texts,src_meta,lang_url,base_id)
-            save_source(opf_path.parent,lang_url["href"])
-            #publish_pecha(opf_path)
-            pechas_catalog.info(f"{opf_path.stem},{src_meta['title']},{lang_url.text}")
-            print(opf_path)
-            """ try:
+            
+            try:
                 opf_path = Path('./opfs')
                 base_id = get_base_id()
                 texts,src_meta = get_text(main_url+lang_url['href'],base_id)
                 opf_path = create_opf(opf_path,texts,src_meta,lang_url,base_id)
-                save_source(opf_path.parent,lang_url)
-                #publish_pecha(opf_path)
+                save_source(opf_path.parent,lang_url["href"])
+                publish_pecha(opf_path)
                 pechas_catalog.info(f"{opf_path.stem},{src_meta['title']},{lang_url.text}")
-                print(opf_path)
             except Exception as e:
-                err_log.info(f"{e_text_link},{e}") """
+                err_log.info(f"{e_text_link},{e}")
             
 
 def get_base_id():
