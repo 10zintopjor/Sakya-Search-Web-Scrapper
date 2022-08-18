@@ -1,0 +1,36 @@
+id: ICE3C4084
+source: https://sakyaresearch.org
+source_file: null
+initial_creation_type: input
+imported: '2022-06-19T13:41:25.377159'
+last_modified: '2022-06-19T13:41:25.377179'
+parser: null
+source_metadata:
+  title: rDo rje gdan pa Kun dga rnam rgyals (1432–1496) Record of Teachings Received
+  author: གོང་དཀར་རྡོ་རྗེ་གདན་པ་ཀུན་དགའ་རྣམ་རྒྱལ།
+  description: 'Digital version 2.1 {Tibetan}; master xml (completed: 2013-06-10);
+    revision in process, thematic TEI markup'
+  file_info:
+  - 'Language: Tibetan'
+  - 'Coverage: Full Text'
+  - 'Accessible: publicly'
+  responibilities:
+  - Digital edition:ས་སྐྱ་ཞིབ་འཇུག་ཁང་། (src)
+  - Text input:Guru Lama, Sachen International, Kathmandu (Nepal) (si)
+  - Editorial process:Mathias Fermer (mf), ཀུན་དགའ་རྡོ་རྗེ། (Kathmandu) (kun)
+  - TEI Encoding:ས་སྐྱ་ཞིབ་འཇུག་ཁང་།
+  - TEI Markup:Mathias Fermer (mf)
+  - Revisions/Corrections:Mathias Fermer (mf)
+  text_witnesses: https://sakyaresearch.org/sources/22
+  bases:
+    6c96:
+      title: rDo rje gdan pa Kun dga rnam rgyals (1432–1496) Record of Teachings Received
+      order: 1
+      base_file: 6c96.txt
+statistics: {}
+quality: {}
+copyright:
+  status: Unknown
+  notice: ''
+  info_url: null
+license: null
